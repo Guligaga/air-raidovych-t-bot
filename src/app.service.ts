@@ -50,32 +50,9 @@ export class AppService implements OnModuleInit {
   onModuleInit() {
     console.log(`Initialization... telegram`);
 
-    this.watchState(25);
-
     this.getAllStates().subscribe((resp) => {
       this.states = resp.states;
     });
-    // this.alertSubscription = timer(0, 10000)
-    //   .pipe(switchMap(() => this.getAllStates()))
-    //   .subscribe((resp) => {
-    //     this.states.forEach((oldState) => {
-    //       const newState = resp.states.find((s) => s.id === oldState.id);
-    //       // console.table({ OLD: oldState, NEW: newState });
-
-    //       if (this.states.length && oldState.alert !== newState.alert) {
-    //         // console.log(
-    //         //   `${newState.name}: ${
-    //         //     newState.alert
-    //         //       ? 'ПОВІТРЯНА ТРИВОГА!'
-    //         //       : 'ВІДБІЙ ПОВІТРЯНОЇ ТРИВОГИ!'
-    //         //   }`,
-    //         // );
-    //         console.table(newState);
-    //       }
-    //     });
-
-    //     this.states = resp.states;
-    //   });
   }
 
   @Start()
@@ -105,6 +82,15 @@ export class AppService implements OnModuleInit {
   @Command('stop')
   async stopCommand() {
     this.alertSubscription.unsubscribe();
+  }
+
+  @Command('check')
+  async checkCommand(ctx: Context) {
+    await ctx.reply('DEPLOYED VERSION WORKS');
+  }
+
+  public getCurrentStates() {
+    return JSON.stringify(this.states, null, 2);
   }
 
   private getAllStates(): Observable<AllStatesResponse> {

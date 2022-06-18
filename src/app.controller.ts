@@ -9,4 +9,9 @@ export class AppController {
   getHello(): string {
     return 'Hello World';
   }
+
+  @Get('/states')
+  getStates() {
+    return this.appService.getCurrentStates();
+  }
 }
