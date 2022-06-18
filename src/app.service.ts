@@ -52,30 +52,30 @@ export class AppService implements OnModuleInit {
 
     this.watchState(25);
 
-    // this.getAllStates().subscribe((resp) => {
-    //   this.states = resp.states;
-    // });
-    this.alertSubscription = timer(0, 10000)
-      .pipe(switchMap(() => this.getAllStates()))
-      .subscribe((resp) => {
-        this.states.forEach((oldState) => {
-          const newState = resp.states.find((s) => s.id === oldState.id);
-          // console.table({ OLD: oldState, NEW: newState });
+    this.getAllStates().subscribe((resp) => {
+      this.states = resp.states;
+    });
+    // this.alertSubscription = timer(0, 10000)
+    //   .pipe(switchMap(() => this.getAllStates()))
+    //   .subscribe((resp) => {
+    //     this.states.forEach((oldState) => {
+    //       const newState = resp.states.find((s) => s.id === oldState.id);
+    //       // console.table({ OLD: oldState, NEW: newState });
 
-          if (this.states.length && oldState.alert !== newState.alert) {
-            // console.log(
-            //   `${newState.name}: ${
-            //     newState.alert
-            //       ? 'ПОВІТРЯНА ТРИВОГА!'
-            //       : 'ВІДБІЙ ПОВІТРЯНОЇ ТРИВОГИ!'
-            //   }`,
-            // );
-            console.table(newState);
-          }
-        });
+    //       if (this.states.length && oldState.alert !== newState.alert) {
+    //         // console.log(
+    //         //   `${newState.name}: ${
+    //         //     newState.alert
+    //         //       ? 'ПОВІТРЯНА ТРИВОГА!'
+    //         //       : 'ВІДБІЙ ПОВІТРЯНОЇ ТРИВОГИ!'
+    //         //   }`,
+    //         // );
+    //         console.table(newState);
+    //       }
+    //     });
 
-        this.states = resp.states;
-      });
+    //     this.states = resp.states;
+    //   });
   }
 
   @Start()
@@ -85,7 +85,7 @@ export class AppService implements OnModuleInit {
       .subscribe((resp) => {
         this.states.forEach((oldState) => {
           const newState = resp.states.find((s) => s.id === oldState.id);
-          console.table({ OLD: oldState, NEW: newState });
+          // console.table({ OLD: oldState, NEW: newState });
 
           if (this.states.length && oldState.alert !== newState.alert) {
             ctx.reply(
