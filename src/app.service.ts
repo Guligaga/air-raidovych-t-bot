@@ -70,7 +70,7 @@ export class AppService implements OnModuleInit {
       });
   }
 
-  @Command('startAll')
+  @Command('startall')
   async startAllCommand(ctx: Context) {
     this.stopCommand();
 
