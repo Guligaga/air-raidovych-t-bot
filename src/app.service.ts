@@ -61,7 +61,10 @@ export class AppService implements OnModuleInit {
     this.alertSubscription = timer(0, 5000)
       .pipe(switchMap(() => this.getState(this.kyivId)))
       .subscribe((resp) => {
-        if (!this.kyivState) return;
+        if (!this.kyivState) {
+          this.kyivState = resp.state;
+          return;
+        }
         if (this.kyivState?.alert === resp.state.alert) return;
         const stickerId: string = resp.state.alert
           ? this.airRaidStartStickerId
