@@ -63,7 +63,6 @@ export class AppService implements OnModuleInit {
       .subscribe((resp) => {
         if (!this.kyivState) {
           this.kyivState = resp.state;
-          return;
         }
         if (this.kyivState?.alert === resp.state.alert) return;
         const stickerId: string = resp.state.alert
