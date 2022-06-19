@@ -1,15 +1,8 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { Hears, Help, On, Start, Update, Command } from 'nestjs-telegraf';
+import { Start, Update, Command } from 'nestjs-telegraf';
 import EventSource from 'eventsource';
 import { Context } from 'telegraf';
-import {
-  interval,
-  map,
-  Observable,
-  switchMap,
-  timer,
-  Unsubscribable,
-} from 'rxjs';
+import { map, Observable, switchMap, timer, Unsubscribable } from 'rxjs';
 import { HttpService } from '@nestjs/axios';
 
 interface State {
@@ -35,11 +28,17 @@ interface OneStateResponse {
 export class AppService implements OnModuleInit {
   private readonly alertApiURL = process.env.ALERT_API_URL;
   private readonly alertApiKey = process.env.ALERT_API_KEY;
+  private readonly airRaidStartStickerId =
+    'CAACAgIAAxkBAANuYq5j1eOl-Nsn-XJ1cDZ8RSzBgOcAAlwXAAKuUiBLzCG_Qptp0MAkBA';
+  private readonly airRaidEndStickerId =
+    'CAACAgIAAxkBAANwYq5j2ZMUb7jTLECvsCwkbEHXaJcAAgsUAAKQvSFLy0QB7jdRUmMkBA';
+  private readonly kyivId = 25;
 
   private alertEventSource!: EventSource;
   private alertSubscription!: Unsubscribable;
 
   private states: State[] = [];
+  private kyivState!: State;
 
   constructor(private readonly httpService: HttpService) {}
 
@@ -56,13 +55,30 @@ export class AppService implements OnModuleInit {
   }
 
   @Start()
-  async startCommand(ctx: Context) {
+  async startKyivCommand(ctx: Context) {
+    this.stopCommand();
+
+    this.alertSubscription = timer(0, 5000)
+      .pipe(switchMap(() => this.getState(this.kyivId)))
+      .subscribe((resp) => {
+        if (this.kyivState?.alert === resp.state.alert) return;
+        const stickerId: string = resp.state.alert
+          ? this.airRaidStartStickerId
+          : this.airRaidEndStickerId;
+
+        ctx.replyWithSticker(stickerId);
+      });
+  }
+
+  @Command('startAll')
+  async startAllCommand(ctx: Context) {
+    this.stopCommand();
+
     this.alertSubscription = timer(0, 5000)
       .pipe(switchMap(() => this.getAllStates()))
       .subscribe((resp) => {
         this.states.forEach((oldState) => {
           const newState = resp.states.find((s) => s.id === oldState.id);
-          // console.table({ OLD: oldState, NEW: newState });
 
           if (this.states.length && oldState.alert !== newState.alert) {
             ctx.reply(
@@ -81,16 +97,11 @@ export class AppService implements OnModuleInit {
 
   @Command('stop')
   async stopCommand() {
-    this.alertSubscription.unsubscribe();
-  }
-
-  @Command('check')
-  async checkCommand(ctx: Context) {
-    await ctx.reply('DEPLOYED VERSION WORKS');
+    this.alertSubscription?.unsubscribe();
   }
 
   public getCurrentStates() {
-    return JSON.stringify(this.states, null, 2);
+    return `<pre>${JSON.stringify(this.states, null, 2)}</pre>`;
   }
 
   private getAllStates(): Observable<AllStatesResponse> {
