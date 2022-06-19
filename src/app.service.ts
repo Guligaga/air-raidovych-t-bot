@@ -67,6 +67,7 @@ export class AppService implements OnModuleInit {
           : this.airRaidEndStickerId;
 
         ctx.replyWithSticker(stickerId);
+        this.kyivState = resp.state;
       });
   }
 
