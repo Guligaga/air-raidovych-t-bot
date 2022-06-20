@@ -1,8 +1,15 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { Start, Update, Command } from 'nestjs-telegraf';
+import { Start, Update, Command, Hears } from 'nestjs-telegraf';
 import EventSource from 'eventsource';
 import { Context } from 'telegraf';
-import { map, Observable, switchMap, timer, Unsubscribable } from 'rxjs';
+import {
+  interval,
+  map,
+  Observable,
+  switchMap,
+  timer,
+  Unsubscribable,
+} from 'rxjs';
 import { HttpService } from '@nestjs/axios';
 
 interface State {
@@ -39,6 +46,8 @@ export class AppService implements OnModuleInit {
 
   private states: State[] = [];
   private kyivState!: State;
+
+  private counter = 0;
 
   constructor(private readonly httpService: HttpService) {}
 
@@ -99,8 +108,17 @@ export class AppService implements OnModuleInit {
       });
   }
 
+  @Hears('AirRaidovych, please run infinite')
+  async infinite(ctx: Context) {
+    this.stopCommand();
+    this.alertSubscription = timer(0, 60 * 1000).subscribe(() => {
+      ctx.reply(`Calls **${++this.counter}** times.`);
+    });
+  }
+
   @Command('stop')
   async stopCommand() {
+    this.counter = 0;
     this.alertSubscription?.unsubscribe();
   }
 
