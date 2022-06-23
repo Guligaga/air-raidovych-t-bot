@@ -160,7 +160,7 @@ export class AppService implements OnModuleInit {
   }
 
   @Command('stop2')
-  async stopCommand2() {
+  async stopCommand2(ctx: Context) {
     ctx.reply(`lgbt`);
     this.kyivEventSource2.close();
   }
