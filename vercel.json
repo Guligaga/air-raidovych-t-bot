@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "env": {
+    "BOT_API_TOKEN": "5342484465:AAFGKRwvHG1MHOUryA5Bk073UNexQeBGuzw",
+    "ALERT_API_URL": "https://alerts.com.ua/api/",
+    "ALERT_API_KEY": "b5876b64165048e8632302aa1fba406aa0f2f4ef"
+  },
+  "builds": [
+      {
+          "src": "src/main.ts",
+          "use": "@vercel/node"
+      }
+  ],
+  "routes": [
+      {
+          "src": "/(.*)",
+          "dest": "src/main.ts",
+          "methods": [
+              "GET",
+              "POST",
+              "PUT",
+              "DELETE"
+          ]
+      }
+  ]
+}
