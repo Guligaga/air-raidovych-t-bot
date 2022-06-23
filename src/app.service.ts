@@ -111,7 +111,7 @@ export class AppService implements OnModuleInit {
       });
   }
 
-  @Hears('AirRaidovych, please run infinite')
+  @Hears('AirRaidovych | please run infinite')
   async infinite(ctx: Context) {
     this.stopCommand();
     this.alertSubscription = timer(0, 60 * 1000).subscribe(() => {
@@ -145,6 +145,12 @@ export class AppService implements OnModuleInit {
       ctx.reply(JSON.stringify(err));
       this.kyivEventSource2.close();
     };
+    
+  @Hears('AirRaidovych | hello')
+  async hello(ctx: Context) {
+    ctx.reply(
+      `Hello, ${ctx.message.from.first_name} ${ctx.message.from.last_name}`,
+    );
   }
 
   @Command('stop')
@@ -183,7 +189,7 @@ export class AppService implements OnModuleInit {
 
   private watchState(id: number) {
     this.alertEventSource = new EventSource(
-      'https://alerts.com.ua/api/states/live',
+      'https://alerts.com.ua/api/states/live/' + id,
       {
         headers: { 'X-API-Key': this.alertApiKey },
         withCredentials: true,
