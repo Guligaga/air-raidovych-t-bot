@@ -44,8 +44,7 @@ export class AppService implements OnModuleInit {
   private alertEventSource!: EventSource;
   private alertSubscription!: Unsubscribable;
 
-  private kyivEventSource2!: EventSource; 
-
+  private kyivEventSource2!: EventSource;
 
   private states: State[] = [];
   private kyivState!: State;
@@ -119,7 +118,7 @@ export class AppService implements OnModuleInit {
     });
   }
 
-  @Start('start2')
+  @Command('start2')
   async startKyivCommand2(ctx: Context) {
     this.kyivEventSource2 = new EventSource(
       `https://alerts.com.ua/api/states/live/${this.kyivId}`,
@@ -133,10 +132,10 @@ export class AppService implements OnModuleInit {
       ctx.reply(`35 boyevyh vyhodov`);
     };
 
-    this.kyivEventSource2.onmessage = (mes) => {
-    const stickerId: string = mes.alert
-      ? this.airRaidStartStickerId
-      : this.airRaidEndStickerId;
+    this.kyivEventSource2.onmessage = (mes: MessageEvent<State>) => {
+      const stickerId: string = mes.data.alert
+        ? this.airRaidStartStickerId
+        : this.airRaidEndStickerId;
 
       ctx.replyWithSticker(stickerId);
     };
@@ -145,7 +144,8 @@ export class AppService implements OnModuleInit {
       ctx.reply(JSON.stringify(err));
       this.kyivEventSource2.close();
     };
-    
+  }
+
   @Hears('AirRaidovych | hello')
   async hello(ctx: Context) {
     ctx.reply(
