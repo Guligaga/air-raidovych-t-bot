@@ -2,14 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Start, Update, Command, Hears } from 'nestjs-telegraf';
 import EventSource from 'eventsource';
 import { Context } from 'telegraf';
-import {
-  interval,
-  map,
-  Observable,
-  switchMap,
-  timer,
-  Unsubscribable,
-} from 'rxjs';
+import { map, Observable, switchMap, timer, Unsubscribable } from 'rxjs';
 import { HttpService } from '@nestjs/axios';
 
 interface State {
@@ -108,12 +101,19 @@ export class AppService implements OnModuleInit {
       });
   }
 
-  @Hears('AirRaidovych, please run infinite')
+  @Hears('AirRaidovych | please run infinite')
   async infinite(ctx: Context) {
     this.stopCommand();
     this.alertSubscription = timer(0, 60 * 1000).subscribe(() => {
       ctx.reply(`Calls **${++this.counter}** times.`);
     });
+  }
+
+  @Hears('AirRaidovych | hello')
+  async hello(ctx: Context) {
+    ctx.reply(
+      `Hello, ${ctx.message.from.first_name} ${ctx.message.from.last_name}`,
+    );
   }
 
   @Command('stop')
@@ -146,7 +146,7 @@ export class AppService implements OnModuleInit {
 
   private watchState(id: number) {
     this.alertEventSource = new EventSource(
-      'https://alerts.com.ua/api/states/live',
+      'https://alerts.com.ua/api/states/live/' + id,
       {
         headers: { 'X-API-Key': this.alertApiKey },
         withCredentials: true,
