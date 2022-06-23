@@ -44,6 +44,9 @@ export class AppService implements OnModuleInit {
   private alertEventSource!: EventSource;
   private alertSubscription!: Unsubscribable;
 
+  private kyivEventSource2!: EventSource; 
+
+
   private states: State[] = [];
   private kyivState!: State;
 
@@ -116,10 +119,44 @@ export class AppService implements OnModuleInit {
     });
   }
 
+  @Start('start2')
+  async startKyivCommand2(ctx: Context) {
+    this.kyivEventSource2 = new EventSource(
+      `https://alerts.com.ua/api/states/live/${this.kyivId}`,
+      {
+        headers: { 'X-API-Key': this.alertApiKey },
+        withCredentials: true,
+      },
+    );
+
+    this.kyivEventSource2.onopen = (mes) => {
+      ctx.reply(`35 boyevyh vyhodov`);
+    };
+
+    this.kyivEventSource2.onmessage = (mes) => {
+    const stickerId: string = mes.alert
+      ? this.airRaidStartStickerId
+      : this.airRaidEndStickerId;
+
+      ctx.replyWithSticker(stickerId);
+    };
+
+    this.kyivEventSource2.onerror = (err) => {
+      ctx.reply(JSON.stringify(err));
+      this.kyivEventSource2.close();
+    };
+  }
+
   @Command('stop')
   async stopCommand() {
     this.counter = 0;
     this.alertSubscription?.unsubscribe();
+  }
+
+  @Command('stop2')
+  async stopCommand2() {
+    ctx.reply(`lgbt`);
+    this.kyivEventSource2.close();
   }
 
   public getCurrentStates() {
