@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Start, Update, Command, Hears } from 'nestjs-telegraf';
 import EventSource from 'eventsource';
 import { Context } from 'telegraf';
@@ -33,7 +33,6 @@ interface OneStateResponse {
 @Update()
 @Injectable()
 export class AppService implements OnModuleInit {
-  private readonly logger = new Logger();
   private readonly alertApiURL = process.env.ALERT_API_URL;
   private readonly alertApiKey = process.env.ALERT_API_KEY;
   private readonly airRaidStartStickerId =
@@ -59,15 +58,11 @@ export class AppService implements OnModuleInit {
   }
 
   onModuleInit() {
-    this.logger.log(`Initialization... telegram`);
+    console.log(`Initialization... telegram`);
 
     this.getAllStates().subscribe((resp) => {
       this.states = resp.states;
     });
-  }
-
-  onApplicationShutdown(signal: string) {
-    this.logger.warn(signal); // e.g. "SIGINT"
   }
 
   @Start()
@@ -117,14 +112,10 @@ export class AppService implements OnModuleInit {
 
   @Hears('AirRaidovych | please run infinite')
   async infinite(ctx: Context) {
-    try {
-      this.stopCommand();
-      this.alertSubscription = timer(0, 60 * 1000).subscribe(() => {
-        ctx.reply(`Calls **${++this.counter}** times.`);
-      });
-    } catch (error) {
-      this.logger.error(error);
-    }
+    this.stopCommand();
+    this.alertSubscription = timer(0, 60 * 1000).subscribe(() => {
+      ctx.reply(`Calls **${++this.counter}** times.`);
+    });
   }
 
   @Command('start2')
