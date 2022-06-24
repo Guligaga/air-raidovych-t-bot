@@ -132,12 +132,20 @@ export class AppService implements OnModuleInit {
       ctx.reply(`35 boyevyh vyhodov`);
     };
 
-    this.kyivEventSource2.onmessage = (mes: MessageEvent<State>) => {
-      const stickerId: string = mes.data.alert
-        ? this.airRaidStartStickerId
-        : this.airRaidEndStickerId;
+    this.kyivEventSource2.onmessage = (
+      mes?: MessageEvent<OneStateResponse>,
+    ) => {
+      if (mes?.data?.state) {
+        try {
+          const stickerId = mes.data.state.alert
+            ? this.airRaidStartStickerId
+            : this.airRaidEndStickerId;
 
-      ctx.replyWithSticker(stickerId);
+          ctx.replyWithSticker(stickerId);
+        } catch (error) {
+          console.error(error);
+        }
+      }
     };
 
     this.kyivEventSource2.onerror = (err) => {
