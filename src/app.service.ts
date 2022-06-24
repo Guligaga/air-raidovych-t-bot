@@ -1,4 +1,10 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  Logger,
+  OnModuleDestroy,
+  OnApplicationShutdown,
+} from '@nestjs/common';
 import { Start, Update, Command, Hears } from 'nestjs-telegraf';
 import EventSource from 'eventsource';
 import { Context } from 'telegraf';
@@ -32,7 +38,9 @@ interface OneStateResponse {
 
 @Update()
 @Injectable()
-export class AppService implements OnModuleInit {
+export class AppService
+  implements OnModuleInit, OnModuleDestroy, OnApplicationShutdown
+{
   private readonly logger = new Logger();
   private readonly alertApiURL = process.env.ALERT_API_URL;
   private readonly alertApiKey = process.env.ALERT_API_KEY;
@@ -64,6 +72,10 @@ export class AppService implements OnModuleInit {
     this.getAllStates().subscribe((resp) => {
       this.states = resp.states;
     });
+  }
+
+  onModuleDestroy() {
+    this.logger.warn('Module destroyed');
   }
 
   onApplicationShutdown(signal: string) {
@@ -120,7 +132,11 @@ export class AppService implements OnModuleInit {
     try {
       this.stopCommand();
       this.alertSubscription = timer(0, 60 * 1000).subscribe(() => {
-        ctx.reply(`Calls **${++this.counter}** times.`);
+        this.logger.log(`Calls *${++this.counter}* times.`);
+
+        ctx.reply(`Calls *${++this.counter}* times.`, {
+          parse_mode: 'Markdown',
+        });
       });
     } catch (error) {
       this.logger.error(error);
