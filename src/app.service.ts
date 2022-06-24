@@ -2,14 +2,7 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { Start, Update, Command, Hears } from 'nestjs-telegraf';
 import EventSource from 'eventsource';
 import { Context } from 'telegraf';
-import {
-  interval,
-  map,
-  Observable,
-  switchMap,
-  timer,
-  Unsubscribable,
-} from 'rxjs';
+import { map, Observable, switchMap, timer, Unsubscribable } from 'rxjs';
 import { HttpService } from '@nestjs/axios';
 
 interface State {
