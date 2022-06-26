@@ -4,7 +4,7 @@ import { MyLogger } from './logger.service';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    logger: process.env.NODE_ENV === 'prod' ? new MyLogger() : false,
+    logger: process.env.NODE_ENV === 'production' ? new MyLogger() : false,
   });
   app.enableCors();
   app.enableShutdownHooks();
