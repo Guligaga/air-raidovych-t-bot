@@ -9,14 +9,15 @@ import { Start, Update, Command, Hears } from 'nestjs-telegraf';
 import EventSource from 'eventsource';
 import { Context } from 'telegraf';
 import {
-  interval,
   map,
   Observable,
+  Subscription,
   switchMap,
   timer,
   Unsubscribable,
 } from 'rxjs';
 import { HttpService } from '@nestjs/axios';
+import { AppRepository } from './app.repository';
 
 interface State {
   id: number;
@@ -50,17 +51,20 @@ export class AppService
     'CAACAgIAAxkBAANwYq5j2ZMUb7jTLECvsCwkbEHXaJcAAgsUAAKQvSFLy0QB7jdRUmMkBA';
   private readonly kyivId = 25;
 
-  private alertEventSource!: EventSource;
-  private alertSubscription!: Unsubscribable;
+  // private alertEventSource!: EventSource;
+  // private alertSubscription!: Unsubscribable;
 
-  private kyivEventSource2!: EventSource;
+  // private kyivEventSource2!: EventSource;
 
-  private states: State[] = [];
-  private kyivState!: State;
+  // private states: State[] = [];
+  // private kyivState!: State;
 
   private counter = 0;
 
-  constructor(private readonly httpService: HttpService) {}
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly repository: AppRepository,
+  ) {}
 
   getData(): { message: string } {
     return { message: 'Welcome to server!' };
@@ -70,7 +74,7 @@ export class AppService
     this.logger.log(`Initialization... telegram`);
 
     this.getAllStates().subscribe((resp) => {
-      this.states = resp.states;
+      this.repository.setStates(resp.states);
     });
   }
 
@@ -84,68 +88,55 @@ export class AppService
 
   @Start()
   async startKyivCommand(ctx: Context) {
-    this.stopCommand();
+    this.stopCommand(ctx);
 
-    this.alertSubscription = timer(0, 5000)
+    const alertSubscription = timer(0, 5000)
       .pipe(switchMap(() => this.getState(this.kyivId)))
       .subscribe((resp) => {
-        if (!this.kyivState) {
-          this.kyivState = resp.state;
-        }
-        if (this.kyivState?.alert === resp.state.alert) return;
+        const kyivState = this.repository.getOneState(this.kyivId);
+        if (kyivState?.alert === resp.state.alert) return;
         const stickerId: string = resp.state.alert
           ? this.airRaidStartStickerId
           : this.airRaidEndStickerId;
 
         ctx.replyWithSticker(stickerId);
-        this.kyivState = resp.state;
+        this.repository.setOneState(resp.state);
+        this.repository.setChatStream(ctx.chat.id, alertSubscription);
       });
   }
 
   @Command('startall')
   async startAllCommand(ctx: Context) {
-    this.stopCommand();
+    this.stopCommand(ctx);
 
-    this.alertSubscription = timer(0, 5000)
+    const alertSubscription = timer(0, 5000)
       .pipe(switchMap(() => this.getAllStates()))
       .subscribe((resp) => {
-        this.states.forEach((oldState) => {
+        this.repository.getStates().forEach((oldState, _, oldStates) => {
           const newState = resp.states.find((s) => s.id === oldState.id);
 
-          if (this.states.length && oldState.alert !== newState.alert) {
+          if (oldStates.length && oldState.alert !== newState.alert) {
             ctx.reply(
               `${newState.name}: ${
                 newState.alert
-                  ? 'ПОВІТРЯНА ТРИВОГА!'
-                  : 'ВІДБІЙ ПОВІТРЯНОЇ ТРИВОГИ!'
+                  ? 'ПОВІТРЯНА ТРИВОГА! \n 🚨🚨🚨'
+                  : 'ВІДБІЙ ПОВІТРЯНОЇ ТРИВОГИ! \n ✅✅✅'
               }`,
             );
           }
         });
 
-        this.states = resp.states;
+        this.repository.setStates(resp.states);
       });
-  }
 
-  @Hears('AirRaidovych | please run infinite')
-  async infinite(ctx: Context) {
-    try {
-      this.stopCommand();
-      this.alertSubscription = timer(0, 60 * 1000).subscribe(() => {
-        this.logger.log(`Calls *${++this.counter}* times.`);
-
-        ctx.reply(`Calls *${++this.counter}* times.`, {
-          parse_mode: 'Markdown',
-        });
-      });
-    } catch (error) {
-      this.logger.error(error);
-    }
+    this.repository.setChatStream(ctx.chat.id, alertSubscription);
   }
 
   @Command('start2')
   async startKyivCommand2(ctx: Context) {
-    this.kyivEventSource2 = new EventSource(
+    this.stopCommand(ctx);
+
+    const kyivEventSource = new EventSource(
       `https://alerts.com.ua/api/states/live/${this.kyivId}`,
       {
         headers: { 'X-API-Key': this.alertApiKey },
@@ -153,11 +144,13 @@ export class AppService
       },
     );
 
-    this.kyivEventSource2.onopen = (mes) => {
+    this.repository.setChatStream(ctx.chat.id, kyivEventSource);
+
+    kyivEventSource.onopen = (mes) => {
       ctx.reply(`35 boyevyh vyhodov`);
     };
 
-    this.kyivEventSource2.addEventListener(
+    kyivEventSource.addEventListener(
       'update',
       (mes?: MessageEvent<OneStateResponse>) => {
         if (mes?.data?.state) {
@@ -174,11 +167,30 @@ export class AppService
       },
     );
 
-    this.kyivEventSource2.onerror = (err) => {
+    kyivEventSource.onerror = (err) => {
       ctx.reply(JSON.stringify(err));
-      this.kyivEventSource2.close();
+      kyivEventSource.close();
     };
   }
+
+  @Command('stop')
+  async stopCommand(ctx: Context) {
+    this.counter = 0;
+    const { stream } = this.repository.getChat(ctx.chat.id);
+    if (stream instanceof Subscription) {
+      stream.unsubscribe();
+    }
+    if (stream instanceof EventSource) {
+      stream.close();
+    }
+    this.repository.unsetChatStream(ctx.chat.id);
+  }
+
+  // @Command('stop2')
+  // async stopCommand2(ctx: Context) {
+  //   ctx.reply(`lgbt`);
+  //   this.kyivEventSource2.close();
+  // }
 
   @Hears('AirRaidovych | hello')
   async hello(ctx: Context) {
@@ -187,20 +199,30 @@ export class AppService
     );
   }
 
-  @Command('stop')
-  async stopCommand() {
-    this.counter = 0;
-    this.alertSubscription?.unsubscribe();
+  @Hears('AirRaidovych | please run infinite')
+  async infinite(ctx: Context) {
+    try {
+      this.stopCommand(ctx);
+      const infiniteSubscription = timer(0, 60 * 1000).subscribe(() => {
+        // this.logger.log(`Calls *${++this.counter}* times.`);
+
+        ctx.reply(`Calls *${++this.counter}* times.`, {
+          parse_mode: 'Markdown',
+        });
+      });
+      this.repository.setChatStream(ctx.chat.id, infiniteSubscription);
+    } catch (error) {
+      this.logger.error(error);
+    }
   }
 
-  @Command('stop2')
-  async stopCommand2(ctx: Context) {
-    ctx.reply(`lgbt`);
-    this.kyivEventSource2.close();
-  }
-
-  public getCurrentStates() {
-    return `<pre>${JSON.stringify(this.states, null, 2)}</pre>`;
+  @Hears('AirRaidovych | get states')
+  public getCurrentStates(ctx?: Context) {
+    const statesResp = JSON.stringify(this.repository.getStates(), null, 2);
+    if (ctx) {
+      ctx.reply(statesResp);
+    }
+    return `<pre>${statesResp}</pre>`;
   }
 
   private getAllStates(): Observable<AllStatesResponse> {
@@ -219,23 +241,5 @@ export class AppService
         withCredentials: true,
       })
       .pipe(map((resp) => resp.data));
-  }
-
-  private watchState(id: number) {
-    this.alertEventSource = new EventSource(
-      'https://alerts.com.ua/api/states/live/' + id,
-      {
-        headers: { 'X-API-Key': this.alertApiKey },
-        withCredentials: true,
-      },
-    );
-
-    this.alertEventSource.onopen = (mes) => {
-      console.log(mes);
-    };
-
-    this.alertEventSource.onmessage = (mes) => {
-      console.log(mes);
-    };
   }
 }

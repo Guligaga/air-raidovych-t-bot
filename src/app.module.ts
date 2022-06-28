@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { AppController } from './app.controller';
+import { AppRepository } from './app.repository';
 import { AppService } from './app.service';
 
 @Module({
@@ -18,6 +19,6 @@ import { AppService } from './app.service';
     HttpModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, AppRepository],
 })
 export class AppModule {}
