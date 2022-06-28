@@ -135,8 +135,8 @@ export class AppService
   @Command('start2')
   async startKyivCommand2(ctx: Context) {
     this.stopCommand(ctx);
-
-    const kyivEventSource = new EventSource(
+    this.logger.log('startKyivCommand2');
+    let kyivEventSource = new EventSource(
       `https://alerts.com.ua/api/states/live/${this.kyivId}`,
       {
         headers: { 'X-API-Key': this.alertApiKey },
@@ -146,30 +146,34 @@ export class AppService
 
     this.repository.setChatStream(ctx.chat.id, kyivEventSource);
 
-    kyivEventSource.onopen = (mes) => {
+    kyivEventSource.onopen = () => {
       ctx.reply(`35 boyevyh vyhodov`);
+      this.logger.log('kyivEventSource.onopen');
     };
 
     kyivEventSource.addEventListener(
       'update',
-      (mes?: MessageEvent<OneStateResponse>) => {
-        if (mes?.data?.state) {
-          try {
-            const stickerId = mes.data.state.alert
-              ? this.airRaidStartStickerId
-              : this.airRaidEndStickerId;
+      async (mes?: MessageEvent<string>) => {
+        const stickerId = (JSON.parse(mes.data) as OneStateResponse)?.state
+          .alert
+          ? this.airRaidStartStickerId
+          : this.airRaidEndStickerId;
 
-            ctx.replyWithSticker(stickerId);
-          } catch (error) {
-            console.error(error);
-          }
-        }
+        this.logger.log(`kyivEventSource.update with ${stickerId}`);
+        await ctx.replyWithSticker(stickerId);
       },
     );
 
     kyivEventSource.onerror = (err) => {
-      ctx.reply(JSON.stringify(err));
-      kyivEventSource.close();
+      this.logger.error(err);
+
+      kyivEventSource = new EventSource(
+        `https://alerts.com.ua/api/states/live/${this.kyivId}`,
+        {
+          headers: { 'X-API-Key': this.alertApiKey },
+          withCredentials: true,
+        },
+      );
     };
   }
 
