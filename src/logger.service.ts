@@ -4,7 +4,7 @@ import { LoggerService } from '@nestjs/common';
 export class MyLogger implements LoggerService {
   private logger!: Log;
   constructor() {
-    const logging = new Logging({ projectId: 'air-raidovych-t-bot' });
+    const logging = new Logging({ projectId: 'air-raidovich-t-bot' });
     this.logger = logging.log('log');
   }
   /**
