@@ -101,8 +101,8 @@ export class AppService
 
         ctx.replyWithSticker(stickerId);
         this.repository.setOneState(resp.state);
-        this.repository.setChatStream(ctx.chat.id, alertSubscription);
       });
+    this.repository.setChatStream(ctx.chat.id, alertSubscription);
   }
 
   @Command('startall')
@@ -120,7 +120,7 @@ export class AppService
               `${newState.name}: ${
                 newState.alert
                   ? 'ПОВІТРЯНА ТРИВОГА! \n 🚨🚨🚨'
-                  : 'ВІДБІЙ ПОВІТРЯНОЇ ТРИВОГИ! \n ✅✅✅'
+                  : 'ВІДБІЙ ТРИВОГИ! \n ✅✅✅'
               }`,
             );
           }
@@ -174,13 +174,66 @@ export class AppService
           withCredentials: true,
         },
       );
+      // this.repository.setChatStream(ctx.chat.id, kyivEventSource);
+    };
+  }
+
+  @Command('startall2')
+  async startAllCommand2(ctx: Context) {
+    this.stopCommand(ctx);
+    this.logger.log('startAllCommand2');
+    let statesEventSource = new EventSource(
+      `https://alerts.com.ua/api/states/live`,
+      {
+        headers: { 'X-API-Key': this.alertApiKey },
+        withCredentials: true,
+      },
+    );
+
+    this.repository.setChatStream(ctx.chat.id, statesEventSource);
+
+    statesEventSource.onopen = () => {
+      ctx.reply(`35 boyevyh vyhodov`);
+      this.logger.log('statesEventSource.onopen');
+    };
+
+    statesEventSource.addEventListener(
+      'update',
+      async (mes?: MessageEvent<string>) => {
+        const state = (JSON.parse(mes.data) as OneStateResponse)?.state;
+
+        this.logger.log(`statesEventSource.update with ${state.name_en}`);
+        await ctx.reply(
+          `${state.name}: ${
+            state.alert
+              ? 'ПОВІТРЯНА ТРИВОГА! \n 🚨🚨🚨'
+              : 'ВІДБІЙ ТРИВОГИ! \n ✅✅✅'
+          }`,
+        );
+      },
+    );
+
+    statesEventSource.onerror = (err) => {
+      this.logger.error(err);
+
+      statesEventSource = new EventSource(
+        `https://alerts.com.ua/api/states/live/${this.kyivId}`,
+        {
+          headers: { 'X-API-Key': this.alertApiKey },
+          withCredentials: true,
+        },
+      );
+      this.repository.setChatStream(ctx.chat.id, statesEventSource);
     };
   }
 
   @Command('stop')
   async stopCommand(ctx: Context) {
     this.counter = 0;
-    const { stream } = this.repository.getChat(ctx.chat.id);
+    const chat = this.repository.getChat(ctx.chat.id);
+    if (!chat || !chat.stream) return;
+    const { stream } = chat;
+
     if (stream instanceof Subscription) {
       stream.unsubscribe();
     }
